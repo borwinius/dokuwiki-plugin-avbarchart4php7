@@ -1,0 +1,156 @@
+<?php
+/**
+ * Plugin AVBarChart: Generates a very simple CSS/HTML bar chart"
+ * 
+ * USAGE: <barchart>MAXVAL|Label1:#,Label2:#,Label3:#</barchart>
+ *
+ * EXAMPLE: <barchart>100|A:55,B:5,C:23,D:38</barchart>
+ *
+ * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
+ * @author     Sherri W. (http://syntaxseed.com)
+ * a few little bugs solved because php7 / richard@borwinius.de
+ */
+ 
+if(!defined('DOKU_INC')) define('DOKU_INC',realpath(dirname(__FILE__).'/../../').'/');
+if(!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
+require_once(DOKU_PLUGIN.'syntax.php');
+ 
+/**
+ * All DokuWiki plugins to extend the parser/rendering mechanism
+ * need to inherit from this class
+ */
+class syntax_plugin_avbarchart extends DokuWiki_Syntax_Plugin {
+ 
+
+// ********* CHART CONFIG SETTINGS *************
+
+var $barWidth = 25;         //Pixel width of chart bars.
+var $barColor = "#ccccff";  //Color of graph bars.
+var $fontSize = "8pt;";     //Font size of labels and values.
+var $maxPxHeight = "200";   //Maximum height of the chart in pixels.
+
+// *********************************************
+
+
+    /**
+     * return some info
+     */
+    function getInfo(){
+        return array(
+            'author' => 'Sherri Wheeler / fixed from Richard Borwinius',
+            'email'  => 'Use my website: http://syntaxseed.com',
+            'date'   => '2019-01-28',
+            'name'   => 'AV Bar Chart',
+            'desc'   => 'Generates a very simple CSS/HTML bar chart with php7.',
+            'url'    => 'https://github.com/borwinius/dokuwiki-plugin-avbarchart4php7/raw/master/avbarchart4php7.zip',
+        );
+    }
+ 
+    /**
+     * What kind of syntax are we?
+     */
+    function getType(){
+        return 'substition';
+    } 
+ 
+    /**
+     * Where to sort in?
+     */ 
+    function getSort(){
+        return 999;
+    }
+ 
+ 
+    /**
+     * Connect pattern to lexer
+     */
+    function connectTo($mode) {
+      $this->Lexer->addEntryPattern('\<barchart\>',$mode,'plugin_avbarchart');
+    }
+ 
+    function postConnect() {
+      $this->Lexer->addExitPattern('\</barchart\>','plugin_avbarchart');
+    }
+ 
+ 
+    /**
+     * Handle the match
+     */
+    function handle($match, $state, $pos, Doku_Handler $handler){
+        switch ($state) {
+          case DOKU_LEXER_ENTER : 
+            return array($state, '');
+          case DOKU_LEXER_MATCHED :
+            break;
+          case DOKU_LEXER_UNMATCHED :
+
+            $chart = "";
+           /* list($maxRange,$data1) = split("\|", $match); */
+			list($maxRange,$data1) = preg_split("/\|/u", $match);
+            $maxRange = floatval($maxRange);
+            
+            if($maxRange > 0 && !empty($data1)){
+
+            $values = preg_split("/\,/u", $data1);
+
+            $chart = "";
+            foreach($values as $col){
+              if(!empty($col)){
+		list($label, $amount) = preg_split("/\:/u", $col);
+                $amount = floatval($amount);
+                if(empty($label)){$label='&nbsp;';}
+                if($amount >= 0){
+                  $height = round(($amount/$maxRange*$this->maxPxHeight));
+                  $chart .= "<td valign='bottom' style='border:0;vertical-align:bottom;text-align:center;' align='center'><span style='font-size:".$this->fontSize.";'>".$amount."</span><br clear='all' /><table style='display:inline;border:0;' cellpadding='1' cellspacing='0'><tr><td height='".$height."' width='".$this->barWidth."' bgcolor='".$this->barColor."' valign='bottom'></td></tr></table><br clear='all' /><span style='font-size:".$this->fontSize.";'><b>".$label."</b></span></td>";
+                }
+			  }
+            }
+
+            }
+
+            $match = $chart;
+            return array($state, $match);
+
+
+          case DOKU_LEXER_EXIT :
+            return array($state, '');
+          case DOKU_LEXER_SPECIAL :
+            break;
+        }
+        return array();
+    }
+ 
+
+    /**
+     * Create output
+     */
+    function render($mode, Doku_Renderer $renderer, $data) {
+      if($mode == 'xhtml'){
+        list($state, $match) = $data;
+          
+        switch ($state) {
+          case DOKU_LEXER_ENTER : 
+            $renderer->doc .= "<table border='0' cellspacing='2' style='border:0;'><tr>"; 
+            break;
+
+          case DOKU_LEXER_MATCHED :
+            break;
+
+          case DOKU_LEXER_UNMATCHED :
+
+            $renderer->doc .= $match; break;          
+
+          case DOKU_LEXER_EXIT :
+            $renderer->doc .= "</tr></table>"; 
+            break;
+
+          case DOKU_LEXER_SPECIAL :
+            break;
+        }
+        return true; 
+      }
+   return false;
+}
+ 
+
+} // End class
